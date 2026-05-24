@@ -1,23 +1,24 @@
 -- ==========================================
--- 1. CẤU HÌNH HỆ THỐNG ĐỒNG BỘ
+-- 1. CẤU HÌNH GỐC CỦA HUB VÀ LỆNH ĐIỀU KHIỂN
 -- ==========================================
-local Settings = {
+local HubSettings = {
     Fly = false, FlySpeed = 100,
     SpeedHack = false, WalkSpeedValue = 100,
     Noclip = false, 
-    Invisibility = false,
-    
-    -- Tích hợp cấu hình Aimbot & ESP tối ưu
-    AimbotEnabled = false, 
+    Invisibility = false
+}
+
+-- BẢNG CẤU HÌNH AIMBOT & ESP CỦA BẠN (Giữ nguyên các giá trị)
+local AimbotSettings = {
+    AimbotEnabled = false, -- Đổi thành false để đồng bộ bật/tắt qua giao diện GUI khi mới chạy
     AimKey = Enum.UserInputType.MouseButton2, -- Giữ Chuột Phải để Aim
-    AimPart = "Head", -- "Head" hoặc "HumanoidRootPart"
-    Smoothness = 0.15, -- Độ mượt tính toán camera
+    AimPart = "Head", -- Bộ phận khóa tâm ("Head" hoặc "HumanoidRootPart")
+    Smoothness = 0.15, -- Độ mượt gốc của bạn
     
     FOVEnabled = true,
-    FOVRadius = 120, -- Bán kính vòng ngắm mặc định
-    FOVColor = Color3.fromRGB(0, 255, 255), -- Màu xanh neon
-    
-    Esp = false -- Trạng thái bật/tắt khung định vị
+    FOVRadius = 120, -- Bán kính vòng tròn tâm ngắm
+    FOVColor = Color3.fromRGB(0, 255, 255), -- Màu xanh neon cho vòng FOV
+    EspEnabled = false -- Đổi thành false để đồng bộ với nút bấm GUI ban đầu
 }
 
 local Players = game:GetService("Players")
@@ -29,36 +30,32 @@ local CoreGui = game:GetService("CoreGui")
 
 local HoldingKey = false
 
--- Khởi tạo đối tượng hình học cho vòng tròn FOV ngắm bắn
+-- ==========================================
+-- 2. ĐOẠN LOGIC AIMBOT & ESP CỦA BẠN (GIỮ NGUYÊN 100%)
+-- ==========================================
+
+-- Vẽ Vòng tròn FOV
 local FOVCircle = Drawing.new("Circle")
-FOVCircle.Visible = false
-FOVCircle.Color = Settings.FOVColor
+FOVCircle.Visible = AimbotSettings.FOVEnabled
+FOVCircle.Color = AimbotSettings.FOVColor
 FOVCircle.Thickness = 1
 FOVCircle.NumSides = 64
-FOVCircle.Radius = Settings.FOVRadius
+FOVCircle.Radius = AimbotSettings.FOVRadius
 FOVCircle.Filled = false
 
--- ==========================================
--- 2. HÀM TÌM MỤC TIÊU (TỐI ƯU HÓA QUÉT MẢNG)
--- ==========================================
+-- Hàm tìm mục tiêu gần tâm ngắm nhất và nằm trong vòng FOV (Giữ nguyên gốc)
 local function GetClosestPlayer()
     local Target = nil
-    local MaxDistance = Settings.FOVRadius
-    local MousePos = UserInputService:GetMouseLocation()
-    local allPlayers = Players:GetPlayers()
+    local MaxDistance = AimbotSettings.FOVRadius
 
-    -- Sử dụng vòng lặp số thay vì pairs để giảm tải CPU
-    for i = 1, #allPlayers do
-        local player = allPlayers[i]
-        if player ~= LocalPlayer and player.Character then
-            local char = player.Character
-            local part = char:FindFirstChild(Settings.AimPart)
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            
-            if part and hum and hum.Health > 0 then
-                local ScreenPos, OnScreen = Camera:WorldToViewportPoint(part.Position)
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(AimbotSettings.AimPart) and player.Character:FindFirstChild("Humanoid") then
+            if player.Character.Humanoid.Health > 0 then
+                local ScreenPos, OnScreen = Camera:WorldToViewportPoint(player.Character[AimbotSettings.AimPart].Position)
                 if OnScreen then
+                    local MousePos = UserInputService:GetMouseLocation()
                     local Distance = (Vector2.new(ScreenPos.X, ScreenPos.Y) - MousePos).Magnitude
+                    
                     if Distance < MaxDistance then
                         MaxDistance = Distance
                         Target = player
@@ -70,21 +67,95 @@ local function GetClosestPlayer()
     return Target
 end
 
--- Lắng nghe trạng thái chuột phải ngắm bắn
+-- Xử lý bật/tắt khi giữ phím Aim
 UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Settings.AimKey then
+    if input.UserInputType == AimbotSettings.AimKey then
         HoldingKey = true
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Settings.AimKey then
+    if input.UserInputType == AimbotSettings.AimKey then
         HoldingKey = false
     end
 end)
 
+-- Tạo cấu trúc ESP cho từng người chơi (Giữ nguyên gốc, chỉ thêm điều kiện nút bật/tắt)
+local function CreateESP(player)
+    if player == LocalPlayer then return end
+
+    local Box = Drawing.new("Square")
+    Box.Visible = false
+    Box.Color = Color3.fromRGB(255, 0, 0)
+    Box.Thickness = 1.5
+    Box.Filled = false
+
+    local Name = Drawing.new("Text")
+    Name.Visible = false
+    Name.Text = player.Name
+    Name.Color = Color3.fromRGB(255, 255, 255)
+    Name.Size = 15
+    Name.Center = true
+    Name.Outline = true
+
+    local Connection
+    Connection = RunService.RenderStepped:Connect(function()
+        -- Cập nhật vòng tròn FOV luôn đi theo chuột
+        FOVCircle.Position = UserInputService:GetMouseLocation()
+        FOVCircle.Radius = AimbotSettings.FOVRadius
+        FOVCircle.Visible = AimbotSettings.AimbotEnabled and AimbotSettings.FOVEnabled
+
+        -- Xử lý Aimbot chuyển động Camera
+        if AimbotSettings.AimbotEnabled and HoldingKey then
+            local TargetPlayer = GetClosestPlayer()
+            if TargetPlayer and TargetPlayer.Character and TargetPlayer.Character:FindFirstChild(AimbotSettings.AimPart) then
+                local TargetPos = Camera:WorldToViewportPoint(TargetPlayer.Character[AimbotSettings.AimPart].Position)
+                local MousePos = UserInputService:GetMouseLocation()
+                
+                -- Di chuyển Camera mượt mà đến vị trí địch
+                Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, TargetPlayer.Character[AimbotSettings.AimPart].Position), AimbotSettings.Smoothness)
+            end
+        end
+
+        -- Vẽ ESP (Thêm điều kiện check nút bấm bật/tắt từ Hub)
+        if AimbotSettings.EspEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+            local HumRoot = player.Character.HumanoidRootPart
+            local ScreenPos, OnScreen = Camera:WorldToViewportPoint(HumRoot.Position)
+
+            if OnScreen then
+                local Scale = 1 / (ScreenPos.Z * math.tan(math.rad(Camera.FieldOfView * 0.5))) * 1000
+                local Width, Height = 4 * Scale, 5 * Scale
+
+                Box.Size = Vector2.new(Width, Height)
+                Box.Position = Vector2.new(ScreenPos.X - Width / 2, ScreenPos.Y - Height / 2)
+                Box.Visible = true
+
+                Name.Position = Vector2.new(ScreenPos.X, ScreenPos.Y - (Height / 2) - 18)
+                Name.Visible = true
+            else
+                Box.Visible = false
+                Name.Visible = false
+            end
+        else
+            Box.Visible = false
+            Name.Visible = false
+            if not Players:FindFirstChild(player.Name) then
+                Box:Remove()
+                Name:Remove()
+                Connection:Disconnect()
+            end
+        end
+    end)
+end
+
+-- Kích hoạt ESP gốc của bạn cho mọi người chơi
+for _, player in ipairs(Players:GetPlayers()) do
+    CreateESP(player)
+end
+Players.PlayerAdded:Connect(CreateESP)
+
 -- ==========================================
--- 3. THIẾT KẾ THỐNG NHẤT GIAO DIỆN (GUI PANEL)
+-- 3. THIẾT KẾ GIAO DIỆN HỆ THỐNG (GUI WINDOW)
 -- ==========================================
 if CoreGui:FindFirstChild("WynozINF_V3_Integrated") then
     CoreGui.WynozINF_V3_Integrated:Destroy()
@@ -101,11 +172,10 @@ MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 0)
 MainFrame.BorderSizePixel = 2
 MainFrame.Position = UDim2.new(0.5, -175, 0.25, -100)
-MainFrame.Size = UDim2.new(0, 350, 0, 360) -- Mở rộng khung để vừa cấu hình FOV mới
+MainFrame.Size = UDim2.new(0, 350, 0, 360) 
 MainFrame.Active = true
 MainFrame.Draggable = true
 
--- Khung bo góc cho mượt mà
 local MainUIModifier = Instance.new("UICorner")
 MainUIModifier.CornerRadius = UDim.new(0, 6)
 MainUIModifier.Parent = MainFrame
@@ -128,7 +198,7 @@ Title.Text = "★ Wynoz INF v3 - Integrated Edition ★"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 13
 
--- Hàm thiết lập nút chức năng đổi màu
+-- Hàm tạo các nút bật/tắt GUI nhanh
 local function CreateToggle(text, position, default, callback)
     local btn = Instance.new("TextButton")
     btn.Parent = MainFrame
@@ -157,13 +227,13 @@ local function CreateToggle(text, position, default, callback)
     end)
 end
 
--- Định vị lại các nút trên giao diện tổng thể
-CreateToggle("Fly (Bay tự do)", UDim2.new(0.06, 0, 0.14, 0), Settings.Fly, function(v) Settings.Fly = v end)
-CreateToggle("Speed (Chạy bộ)", UDim2.new(0.52, 0, 0.14, 0), Settings.SpeedHack, function(v) Settings.SpeedHack = v end)
-CreateToggle("Noclip (Xuyên tường)", UDim2.new(0.06, 0, 0.25, 0), Settings.Noclip, function(v) Settings.Noclip = v end)
-CreateToggle("Name ESP (Định vị)", UDim2.new(0.52, 0, 0.25, 0), Settings.Esp, function(v) Settings.Esp = v end)
-CreateToggle("Aimbot (Khóa tâm)", UDim2.new(0.06, 0, 0.36, 0), Settings.AimbotEnabled, function(v) Settings.AimbotEnabled = v end)
-CreateToggle("Invis (Tàng hình)", UDim2.new(0.52, 0, 0.36, 0), Settings.Invisibility, function(v) Settings.Invisibility = v end)
+-- Liên kết các nút bấm GUI vào cấu hình hệ thống
+CreateToggle("Fly (Bay tự do)", UDim2.new(0.06, 0, 0.14, 0), HubSettings.Fly, function(v) HubSettings.Fly = v end)
+CreateToggle("Speed (Chạy bộ)", UDim2.new(0.52, 0, 0.14, 0), HubSettings.SpeedHack, function(v) HubSettings.SpeedHack = v end)
+CreateToggle("Noclip (Xuyên tường)", UDim2.new(0.06, 0, 0.25, 0), HubSettings.Noclip, function(v) HubSettings.Noclip = v end)
+CreateToggle("Name ESP (Định vị)", UDim2.new(0.52, 0, 0.25, 0), AimbotSettings.EspEnabled, function(v) AimbotSettings.EspEnabled = v end)
+CreateToggle("Aimbot (Khóa tâm)", UDim2.new(0.06, 0, 0.36, 0), AimbotSettings.AimbotEnabled, function(v) AimbotSettings.AimbotEnabled = v end)
+CreateToggle("Invis (Tàng hình)", UDim2.new(0.52, 0, 0.36, 0), HubSettings.Invisibility, function(v) HubSettings.Invisibility = v end)
 
 -- CHỨC NĂNG TELEPORT TỚI NGƯỜI CHƠI
 local TeleInput = Instance.new("TextBox")
@@ -214,8 +284,8 @@ SpeedInput.FocusLost:Connect(function(enterPressed)
     if enterPressed then
         local num = tonumber(SpeedInput.Text)
         if num then
-            Settings.FlySpeed = num
-            Settings.WalkSpeedValue = num
+            HubSettings.FlySpeed = num
+            HubSettings.WalkSpeedValue = num
         end
     end
 end)
@@ -227,7 +297,7 @@ FOVInput.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 FOVInput.Position = UDim2.new(0.06, 0, 0.71, 0)
 FOVInput.Size = UDim2.new(0.88, 0, 0, 30)
 FOVInput.Font = Enum.Font.SourceSans
-FOVInput.Text = "Cài đặt kích thước vòng FOV: " .. tostring(Settings.FOVRadius)
+FOVInput.Text = "Cài đặt kích thước vòng FOV: " .. tostring(AimbotSettings.FOVRadius)
 FOVInput.TextColor3 = Color3.fromRGB(180, 180, 180)
 FOVInput.TextSize = 13
 
@@ -238,10 +308,10 @@ FOVInputCorner.Parent = FOVInput
 FOVInput.FocusLost:Connect(function(enterPressed)
     local num = tonumber(string.match(FOVInput.Text, "%d+"))
     if num then
-        Settings.FOVRadius = num
+        AimbotSettings.FOVRadius = num
         FOVInput.Text = "Cài đặt kích thước vòng FOV: " .. tostring(num)
     else
-        FOVInput.Text = "Cài đặt kích thước vòng FOV: " .. tostring(Settings.FOVRadius)
+        FOVInput.Text = "Cài đặt kích thước vòng FOV: " .. tostring(AimbotSettings.FOVRadius)
     end
 end)
 
@@ -256,7 +326,7 @@ Tip.TextColor3 = Color3.fromRGB(150, 150, 150)
 Tip.TextSize = 12
 
 -- ==========================================
--- 4. VÒNG LẶP ENGINE LIÊN TỤC (RENDERSTEPPED)
+-- 4. VÒNG LẶP CORE ENGINE HỆ THỐNG (FLY, SPEED, NOCLIP, INVIS)
 -- ==========================================
 local BodyVelocity, BodyGyro = nil, nil
 
@@ -265,24 +335,8 @@ RunService.RenderStepped:Connect(function()
     local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     
-    -- Đồng bộ và cập nhật vị trí/kích thước vòng tròn FOV theo Hub
-    FOVCircle.Visible = Settings.AimbotEnabled and Settings.FOVEnabled
-    FOVCircle.Position = UserInputService:GetMouseLocation()
-    FOVCircle.Radius = Settings.FOVRadius
-
-    -- Thực thi Aimbot xử lý mượt mà (Lerp) mới
-    if Settings.AimbotEnabled and HoldingKey then
-        local TargetPlayer = GetClosestPlayer()
-        if TargetPlayer and TargetPlayer.Character then
-            local part = TargetPlayer.Character:FindFirstChild(Settings.AimPart)
-            if part then
-                Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, part.Position), Settings.Smoothness)
-            end
-        end
-    end
-
-    -- Cơ chế xử lý Fly bay tự do
-    if root and Settings.Fly then
+    -- Xử lý Fly
+    if root and HubSettings.Fly then
         if not BodyVelocity or not BodyVelocity.Parent then 
             BodyVelocity = Instance.new("BodyVelocity", root) 
             BodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge) 
@@ -299,31 +353,31 @@ RunService.RenderStepped:Connect(function()
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + Camera.CFrame.LookVector:Cross(Vector3.new(0,1,0)) end
         if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
         if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then dir = dir - Vector3.new(0, 1, 0) end
-        BodyVelocity.Velocity = dir * Settings.FlySpeed
+        BodyVelocity.Velocity = dir * HubSettings.FlySpeed
     else
         if BodyVelocity then BodyVelocity:Destroy() BodyVelocity = nil end
         if BodyGyro then BodyGyro:Destroy() BodyGyro = nil end
     end
 
-    -- Cơ chế chỉnh sửa tốc độ WalkSpeed công khai
+    -- Xử lý WalkSpeed
     if hum then
-        hum.WalkSpeed = (Settings.SpeedHack and not Settings.Fly) and Settings.WalkSpeedValue or 16
+        hum.WalkSpeed = (HubSettings.SpeedHack and not HubSettings.Fly) and HubSettings.WalkSpeedValue or 16
     end
 
-    -- Cơ chế xử lý Noclip xuyên tường cấu trúc phẳng
-    if Settings.Noclip and char then
+    -- Xử lý Noclip
+    if HubSettings.Noclip and char then
         for _, part in ipairs(char:GetDescendants()) do 
             if part:IsA("BasePart") then part.CanCollide = false end 
         end
     end
 
-    -- Cơ chế xử lý Tàng hình (Invisibility) hình ảnh bản thân
-    if char and Settings.Invisibility then
+    -- Xử lý Invisibility
+    if char and HubSettings.Invisibility then
         for _, p in ipairs(char:GetDescendants()) do 
             if p:IsA("BasePart") or p:IsA("Decal") then p.Transparency = 1 end 
         end
     else
-        if char and not Settings.Invisibility and char:FindFirstChild("Head") and char.Head.Transparency == 1 then
+        if char and not HubSettings.Invisibility and char:FindFirstChild("Head") and char.Head.Transparency == 1 then
             for _, p in ipairs(char:GetDescendants()) do
                 if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then p.Transparency = 0 end
                 if p:IsA("Decal") then p.Transparency = 0 end
@@ -332,76 +386,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ==========================================
--- 5. HỆ THỐNG VẼ BOX VÀ NAME ESP TÍCH HỢP
--- ==========================================
-local function CreateESP(player)
-    if player == LocalPlayer then return end
-    
-    local Box = Drawing.new("Square")
-    Box.Visible = false
-    Box.Color = Color3.fromRGB(255, 0, 0)
-    Box.Thickness = 1.5
-    Box.Filled = false
-
-    local Name = Drawing.new("Text")
-    Name.Visible = false
-    Name.Text = player.Name
-    Name.Color = Color3.fromRGB(255, 255, 255)
-    Name.Size = 14
-    Name.Center = true
-    Name.Outline = true
-
-    local Connection
-    Connection = RunService.RenderStepped:Connect(function()
-        -- Chỉ thực hiện dựng khung hình khi tùy chọn nút bấm ESP đang được bật (ON)
-        if Settings.Esp and player.Character then
-            local char = player.Character
-            local HumRoot = char:FindFirstChild("HumanoidRootPart")
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            
-            if HumRoot and hum and hum.Health > 0 then
-                local ScreenPos, OnScreen = Camera:WorldToViewportPoint(HumRoot.Position)
-
-                if OnScreen then
-                    local Scale = 1 / (ScreenPos.Z * math.tan(math.rad(Camera.FieldOfView * 0.5))) * 1000
-                    local Width, Height = 4 * Scale, 5 * Scale
-
-                    Box.Size = Vector2.new(Width, Height)
-                    Box.Position = Vector2.new(ScreenPos.X - Width / 2, ScreenPos.Y - Height / 2)
-                    Box.Visible = true
-
-                    Name.Position = Vector2.new(ScreenPos.X, ScreenPos.Y - (Height / 2) - 18)
-                    Name.Visible = true
-                else
-                    Box.Visible = false
-                    Name.Visible = false
-                end
-            else
-                Box.Visible = false
-                Name.Visible = false
-            end
-        else
-            Box.Visible = false
-            Name.Visible = false
-        end
-
-        -- Hủy kết nối dọn sạch bộ nhớ bản vẽ khi người chơi rời phòng
-        if not Players:FindFirstChild(player.Name) then
-            Box:Remove()
-            Name:Remove()
-            Connection:Disconnect()
-        end
-    end)
-end
-
--- Kích hoạt cấu trúc ESP đồng loạt trên máy chủ
-for _, player in ipairs(Players:GetPlayers()) do 
-    CreateESP(player) 
-end
-Players.PlayerAdded:Connect(CreateESP)
-
--- Lắng nghe phím ẩn/hiện nhanh bảng điều khiển UI
+-- Phím Ẩn/Hiện Panel GUI nhanh
 UserInputService.InputBegan:Connect(function(input, processed)
     if processed then return end
     if input.KeyCode == Enum.KeyCode.RightShift then 
