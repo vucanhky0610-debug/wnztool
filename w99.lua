@@ -1,5 +1,4 @@
 
--- ==========================================
 local HubSettings = {
     Fly = false, FlySpeed = 100,
     SpeedHack = false, WalkSpeedValue = 100,
