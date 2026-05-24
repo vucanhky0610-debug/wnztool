@@ -1,5 +1,5 @@
 -- =============================================================================
--- [★] WYNOZ INF V4 - PREMIUM EDITION (INTEGRATED ADVANCED AIMBOT & ESP)
+-- [★] WYNOZ INF V4 - PREMIUM EDITION (PHYSICS & MOVEMENT FIXED)
 -- =============================================================================
 
 -- 0. HỆ THỐNG AN TOÀN CHỐNG SẬP GAME (ENVIRONMENT CHECK)
@@ -19,7 +19,7 @@ if not Drawing then
     getgenv().Drawing = FakeDrawing
 end
 
--- 1. KHỞI TẠO BIẾN CẤU HÌNH HỆ THỐNG (ĐỒNG BỘ VỚI CODE CỦA BẠN)
+-- 1. KHỞI TẠO BIẾN CẤU HÌNH HỆ THỐNG
 local HubSettings = {
     AimbotEnabled = false,
     AimKey = Enum.UserInputType.MouseButton2,
@@ -58,7 +58,7 @@ local FileName = "Wynoz_v4_Config.json"
 local HoldingKey = false
 
 -- =============================================================================
--- 2. KHỞI TẠO ĐỒ HỌA HOÀN THIỆN (MÔ ĐUN ĐOẠN CODE CỦA BẠN)
+-- 2. KHỞI TẠO ĐỒ HỌA VÒNG TRÒN FOV
 -- =============================================================================
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = HubSettings.FOVEnabled
@@ -68,14 +68,13 @@ FOVCircle.NumSides = 64
 FOVCircle.Radius = HubSettings.FOVRadius
 FOVCircle.Filled = false
 
--- Hàm tìm mục tiêu gần tâm ngắm nhất (Giữ nguyên thuật toán của bạn)
+-- Hàm tìm mục tiêu gần tâm ngắm nhất (Giải thuật chuẩn của bạn)
 local function GetClosestPlayer()
     local Target = nil
     local MaxDistance = HubSettings.FOVRadius
 
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(HubSettings.AimPart) and player.Character:FindFirstChild("Humanoid") then
-            -- Tích hợp Team Check của v4 vào hàm quét của bạn
             if HubSettings.TeamCheck and player.Team == LocalPlayer.Team then continue end
             
             if player.Character.Humanoid.Health > 0 then
@@ -95,7 +94,6 @@ local function GetClosestPlayer()
     return Target
 end
 
--- Xử lý bắt giữ chuột phải thực chiến
 UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == HubSettings.AimKey then HoldingKey = true end
 end)
@@ -160,7 +158,6 @@ UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     MainFrame.Size = UDim2.new(0, 220, 0, targetY)
 end)
 
--- Các hàm hỗ trợ dựng cây thư mục UI nhanh
 local function CreateCategory(name)
     local CategoryBtn = Instance.new("TextButton")
     CategoryBtn.Size = UDim2.new(1, 0, 0, 25)
@@ -293,7 +290,7 @@ local function CreateSlider(parent, text, min, max, configKey, callback)
 end
 
 -- =============================================================================
--- 4. KẾT NỐI ĐIỀU KHIỂN NÚT BẤM GUI VÀO BIẾN CONFIG
+-- 4. BỐ CỤC DROPDOWN MENU
 -- =============================================================================
 
 -- TAB 1: COMBAT
@@ -316,16 +313,9 @@ local FlyToggle = CreateToggle(MoveSub, "Fly Engine v3", "Fly", function(state) 
 local NoclipToggle = CreateToggle(MoveSub, "Noclip Core v3", "Noclip", function(state) HubSettings.Noclip = state end)
 CreateSlider(MoveSub, "Speed Hack Val", 16, 300, "WalkSpeedValue", function(val) HubSettings.WalkSpeedValue = val end)
 
--- Hệ thống nút khóa chéo Fix Lag
+-- Hệ thống nút Fix Lag Khóa Chéo
 local Divider = Instance.new("TextLabel")
-Divider.Size = UDim2.new(1, 0, 0, 15)
-Divider.BackgroundTransparency = 1
-Divider.Text = "  [-] FPS BOOSTER & FIX LAG"
-Divider.TextColor3 = Color3.fromRGB(0, 255, 200)
-Divider.Font = Enum.Font.SourceSansBold
-Divider.TextSize = 11
-Divider.TextXAlignment = Enum.TextXAlignment.Left
-Divider.Parent = MoveSub
+Divider.Size = UDim2.new(1, 0, 0, 15); Divider.BackgroundTransparency = 1; Divider.Text = "  [-] FPS BOOSTER & FIX LAG"; Divider.TextColor3 = Color3.fromRGB(0, 255, 200); Divider.Font = Enum.Font.SourceSansBold; Divider.TextSize = 11; Divider.TextXAlignment = Enum.TextXAlignment.Left; Divider.Parent = MoveSub
 
 local Lag30, Lag50, Lag80
 local function ApplyFixLag(level)
@@ -364,7 +354,7 @@ Lag80 = CreateToggle(MoveSub, "Fix Lag 80% (Xóa Hết)", "FixLag80", function(s
     if state then Lag30.Update(false); Lag50.Update(false); ApplyFixLag(80) else if not HubSettings.FixLag30 and not HubSettings.FixLag50 then ApplyFixLag(0) end end
 end)
 
--- TAB 4: CONFIG
+-- TAB 4: CONFIG LOCAL DATA
 local ConfigSub = CreateCategory("💾 CONFIG")
 local SaveBtn = Instance.new("TextButton")
 SaveBtn.Size = UDim2.new(0.9, 0, 0, 22); SaveBtn.BackgroundColor3 = Color3.fromRGB(30, 40, 50); SaveBtn.Text = "[ LƯU CẤU HÌNH (SAVE) ]"; SaveBtn.TextColor3 = Color3.fromRGB(100, 200, 255); SaveBtn.Font = Enum.Font.SourceSansBold; SaveBtn.TextSize = 12; SaveBtn.Parent = ConfigSub
@@ -387,14 +377,17 @@ LoadBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Phím RightShift đóng mở menu nhanh
+-- Ẩn/Hiện Menu bằng phím RightShift
 UserInputService.InputBegan:Connect(function(input, processed)
     if not processed and input.KeyCode == Enum.KeyCode.RightShift then MainFrame.Visible = not MainFrame.Visible end
 end)
 
+
 -- =============================================================================
--- 5. KẾT HỢP HỆ THỐNG VÒNG LẶP (ĐOẠN CODE AIMBOT & ESP CHUẨN CỦA BẠN)
+-- 5. HỆ THỐNG VÒNG LẶP ĐỘC LẬP (TÁCH BIỆT ESP KHỎI VẬT LÝ LOCAL)
 -- =============================================================================
+
+-- [HÀM XỬ LÝ ĐỒ HỌA ESP CHO TỪNG PLAYER - KHÔNG CHỨA VẬT LÝ LOCAL]
 local function CreateESP(player)
     if player == LocalPlayer then return end
 
@@ -412,7 +405,6 @@ local function CreateESP(player)
     Name.Center = true
     Name.Outline = true
     
-    -- Thêm tuyến đường kẻ định vị Tracer của v4
     local Tracer = Drawing.new("Line")
     Tracer.Visible = false
     Tracer.Color = Color3.fromRGB(255, 0, 0)
@@ -420,36 +412,11 @@ local function CreateESP(player)
 
     local Connection
     Connection = RunService.RenderStepped:Connect(function()
-        -- 1. Cập nhật vòng tròn FOV luôn đi theo chuột
-        FOVCircle.Position = UserInputService:GetMouseLocation()
-        FOVCircle.Radius = HubSettings.FOVRadius
-        FOVCircle.Visible = HubSettings.AimbotEnabled
-
-        -- 2. Xử lý Aimbot chuyển động Camera (Đoạn mã gốc của bạn)
-        if HubSettings.AimbotEnabled and HoldingKey then
-            local TargetPlayer = GetClosestPlayer()
-            if TargetPlayer and TargetPlayer.Character and TargetPlayer.Character:FindFirstChild(HubSettings.AimPart) then
-                -- Đồng bộ mượt trực tiếp với thanh trượt Smoothness trên UI v4
-                Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, TargetPlayer.Character[HubSettings.AimPart].Position), HubSettings.Smoothness)
-            end
-        end
-
-        -- 3. Xử lý Trigger Bot của v4 tích hợp
-        if HubSettings.TriggerBot and Mouse.Target then
-            local tChar = Mouse.Target.Parent
-            local tPlayer = Players:GetPlayerFromCharacter(tChar)
-            if tPlayer and tPlayer ~= LocalPlayer and tChar:FindFirstChild("Humanoid") and tChar.Humanoid.Health > 0 then
-                if not (HubSettings.TeamCheck and tPlayer.Team == LocalPlayer.Team) then pcall(mouse1click) end
-            end
-        end
-
-        -- 4. Xử lý logic hiển thị ESP toán học nâng cao của bạn
         if HubSettings.EspEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
             local HumRoot = player.Character.HumanoidRootPart
             local ScreenPos, OnScreen = Camera:WorldToViewportPoint(HumRoot.Position)
 
             if OnScreen then
-                -- Tính năng v4: Đổi màu ESP thông minh theo Team Check
                 if HubSettings.TeamCheck and player.Team == LocalPlayer.Team then
                     Box.Color = Color3.fromRGB(0, 255, 100)
                     Tracer.Color = Color3.fromRGB(0, 255, 100)
@@ -458,6 +425,7 @@ local function CreateESP(player)
                     Tracer.Color = Color3.fromRGB(255, 50, 50)
                 end
 
+                -- Công thức toán học tính Scale siêu chuẩn của bạn
                 local Scale = 1 / (ScreenPos.Z * math.tan(math.rad(Camera.FieldOfView * 0.5))) * 1000
                 local Width, Height = 4 * Scale, 5 * Scale
 
@@ -468,7 +436,6 @@ local function CreateESP(player)
                 Name.Position = Vector2.new(ScreenPos.X, ScreenPos.Y - (Height / 2) - 18)
                 Name.Visible = true
                 
-                -- Xử lý Tracer định vị
                 if HubSettings.TracerEnabled then
                     Tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
                     Tracer.To = Vector2.new(ScreenPos.X, ScreenPos.Y)
@@ -477,34 +444,57 @@ local function CreateESP(player)
                     Tracer.Visible = false
                 end
             else
-                Box.Visible = false
-                Name.Visible = false
-                Tracer.Visible = false
+                Box.Visible = false; Name.Visible = false; Tracer.Visible = false
             end
         else
-            Box.Visible = false
-            Name.Visible = false
-            Tracer.Visible = false
+            Box.Visible = false; Name.Visible = false; Tracer.Visible = false
             if not Players:FindFirstChild(player.Name) then
-                Box:Remove()
-                Name:Remove()
-                Tracer:Remove()
+                Box:Remove(); Name:Remove(); Tracer:Remove()
                 Connection:Disconnect()
             end
-        end
-        
-        -- Tính năng bổ trợ phụ: Xử lý Fly/WalkSpeed cho LocalPlayer
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            if HubSettings.Noclip then
-                for _, part in ipairs(LocalPlayer.Character:GetChildren()) do
-                    if part:IsA("BasePart") then part.CanCollide = false end
-                end
-            end
-            LocalPlayer.Character.Humanoid.WalkSpeed = HubSettings.WalkSpeedValue
         end
     end)
 end
 
--- Vận hành bộ sinh ESP trên toàn Server
+-- Khởi động cổng ESP
 for _, player in ipairs(Players:GetPlayers()) do CreateESP(player) end
 Players.PlayerAdded:Connect(CreateESP)
+
+
+-- [VÒNG LẶP CHỦ DUY NHẤT CHUYÊN XỬ LÝ AIMBOT, TRIGGER BOT VÀ VẬT LÝ DI CHUYỂN]
+RunService.RenderStepped:Connect(function()
+    -- 1. Cập nhật Vòng tròn tâm ngắm FOV
+    if FOVCircle then
+        FOVCircle.Position = UserInputService:GetMouseLocation()
+        FOVCircle.Radius = HubSettings.FOVRadius
+        FOVCircle.Visible = HubSettings.AimbotEnabled
+    end
+
+    -- 2. Xử lý khóa tâm Aimbot thực chiến
+    if HubSettings.AimbotEnabled and HoldingKey then
+        local TargetPlayer = GetClosestPlayer()
+        if TargetPlayer and TargetPlayer.Character and TargetPlayer.Character:FindFirstChild(HubSettings.AimPart) then
+            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, TargetPlayer.Character[HubSettings.AimPart].Position), HubSettings.Smoothness)
+        end
+    end
+    
+    -- 3. Xử lý tự động bắn Trigger Bot
+    if HubSettings.TriggerBot and Mouse.Target then
+        local tChar = Mouse.Target.Parent
+        local tPlayer = Players:GetPlayerFromCharacter(tChar)
+        if tPlayer and tPlayer ~= LocalPlayer and tChar:FindFirstChild("Humanoid") and tChar.Humanoid.Health > 0 then
+            if not (HubSettings.TeamCheck and tPlayer.Team == LocalPlayer.Team) then pcall(mouse1click) end
+        end
+    end
+    
+    -- 4. ĐÃ ĐƯỢC TÁCH BIỆT: Xử lý vật lý di chuyển của LocalPlayer (Chạy duy nhất 1 lần mỗi khung hình)
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        if HubSettings.Noclip then
+            for _, part in ipairs(LocalPlayer.Character:GetChildren()) do
+                if part:IsA("BasePart") then part.CanCollide = false end
+            end
+        end
+        -- Luôn luôn đồng bộ hóa mượt WalkSpeed từ thanh kéo Slider mà không sợ bị đứng im
+        LocalPlayer.Character.Humanoid.WalkSpeed = HubSettings.WalkSpeedValue
+    end
+end)
