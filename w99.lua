@@ -60,7 +60,6 @@ ScreenGui.ResetOnSpawn = false
 pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
 if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
--- Khung chính siêu nhỏ gọn (Rộng 220px để tiết kiệm diện tích)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 220, 0, 160)
@@ -71,12 +70,10 @@ MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
--- Bo góc cho Khung chính
 local FrameCorner = Instance.new("UICorner")
 FrameCorner.CornerRadius = UDim.new(0, 6)
 FrameCorner.Parent = MainFrame
 
--- Thanh Tiêu đề (Title Bar)
 local TitleBar = Instance.new("TextLabel")
 TitleBar.Name = "TitleBar"
 TitleBar.Size = UDim2.new(1, 0, 0, 25)
@@ -93,7 +90,6 @@ local TitleCorner = Instance.new("UICorner")
 TitleCorner.CornerRadius = UDim.new(0, 6)
 TitleCorner.Parent = TitleBar
 
--- Danh sách cuộn chứa các mục Tree-View
 local Container = Instance.new("ScrollingFrame")
 Container.Name = "Container"
 Container.Position = UDim2.new(0, 5, 0, 30)
@@ -108,10 +104,8 @@ UIListLayout.Parent = Container
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 3)
 
--- Cập nhật kích thước cuộn tự động theo số lượng nút hiển thị
 UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     Container.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
-    -- Tự động co giãn nhẹ chiều dọc của MainFrame để menu luôn vuông vắn
     local targetY = math.clamp(UIListLayout.AbsoluteContentSize.Y + 40, 160, 400)
     MainFrame.Size = UDim2.new(0, 220, 0, targetY)
 end)
@@ -119,8 +113,6 @@ end)
 -- =============================================================================
 -- 3. HÀM TẠO THÀNH PHẦN GIAO DIỆN (UI CREATOR FUNCTIONS)
 -- =============================================================================
-
--- Hàm tạo Mục Lớn (Category)
 local function CreateCategory(name)
     local CategoryBtn = Instance.new("TextButton")
     CategoryBtn.Size = UDim2.new(1, 0, 0, 25)
@@ -166,7 +158,6 @@ local function CreateCategory(name)
     return SubFrame
 end
 
--- Hàm tạo Nút Gạt Bật/Tắt (Toggle Switch)
 local function CreateToggle(parent, text, configKey, callback)
     local ToggleFrame = Instance.new("Frame")
     ToggleFrame.Size = UDim2.new(1, 0, 0, 20)
@@ -214,7 +205,6 @@ local function CreateToggle(parent, text, configKey, callback)
     return {Update = UpdateVisual}
 end
 
--- Hàm tạo Thanh kéo điều chỉnh thông số (Slider)
 local function CreateSlider(parent, text, min, max, configKey, callback)
     local SliderFrame = Instance.new("Frame")
     SliderFrame.Size = UDim2.new(1, 0, 0, 22)
@@ -249,7 +239,7 @@ local function CreateSlider(parent, text, min, max, configKey, callback)
         local pos = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
         SliderBtn.Position = UDim2.new(pos, 0, 0.5, 0)
         local value = math.floor(min + (max - min) * pos)
-        if min == 0 and max == 1 then -- Xử lý số thập phân cho Smoothness
+        if min == 0 and max == 1 then
             value = tonumber(string.format("%.2f", min + (max - min) * pos))
         end
         HubSettings[configKey] = value
@@ -277,24 +267,23 @@ end
 
 -- ------------------ [ TAB 1: COMBAT ] ------------------
 local CombatSub = CreateCategory("🎯 COMBAT")
-local AimToggle = CreateToggle(CombatSub, "Aimbot Core v3", "AimbotEnabled")
-local TeamToggle = CreateToggle(CombatSub, "Team Check (Né)", "TeamCheck")
-local TriggerToggle = CreateToggle(CombatSub, "Trigger Bot (Auto)", "TriggerBot")
+local AimToggle = CreateToggle(CombatSub, "Aimbot Core v3", "AimbotEnabled", function(state) HubSettings.AimbotEnabled = state end)
+local TeamToggle = CreateToggle(CombatSub, "Team Check (Né)", "TeamCheck", function(state) HubSettings.TeamCheck = state end)
+local TriggerToggle = CreateToggle(CombatSub, "Trigger Bot (Auto)", "TriggerBot", function(state) HubSettings.TriggerBot = state end)
 CreateSlider(CombatSub, "Smooth (Độ mượt)", 0, 1, "Smoothness")
 
 -- ------------------ [ TAB 2: VISUAL ] ------------------
 local VisualSub = CreateCategory("👁️ VISUAL")
-local EspToggle = CreateToggle(VisualSub, "Box/Name ESP v3", "EspEnabled")
-local TracerToggle = CreateToggle(VisualSub, "Tracer ESP (Line)", "TracerEnabled")
+local EspToggle = CreateToggle(VisualSub, "Box/Name ESP v3", "EspEnabled", function(state) HubSettings.EspEnabled = state end)
+local TracerToggle = CreateToggle(VisualSub, "Tracer ESP (Line)", "TracerEnabled", function(state) HubSettings.TracerEnabled = state end)
 CreateSlider(VisualSub, "Vòng ngắm FOV", 10, 500, "FOVRadius")
 
 -- ------------------ [ TAB 3: MOVEMENT & FPS SYSTEM ] ------------------
 local MoveSub = CreateCategory("⚡ MOVEMENT")
-local FlyToggle = CreateToggle(MoveSub, "Fly Engine v3", "Fly")
-local NoclipToggle = CreateToggle(MoveSub, "Noclip Core v3", "Noclip")
+local FlyToggle = CreateToggle(MoveSub, "Fly Engine v3", "Fly", function(state) HubSettings.Fly = state end)
+local NoclipToggle = CreateToggle(MoveSub, "Noclip Core v3", "Noclip", function(state) HubSettings.Noclip = state end)
 CreateSlider(MoveSub, "Speed Hack Val", 16, 300, "WalkSpeedValue")
 
--- Khu vực xử lý Nút gạt Fix Lag Khóa Chéo ON/OFF độc quyền của v4
 local Divider = Instance.new("TextLabel")
 Divider.Size = UDim2.new(1, 0, 0, 15)
 Divider.BackgroundTransparency = 1
@@ -305,15 +294,13 @@ Divider.TextSize = 11
 Divider.TextXAlignment = Enum.TextXAlignment.Left
 Divider.Parent = MoveSub
 
-local Lag30, Lag50, Lag80 -- Khai báo biến đại diện
+local Lag30, Lag50, Lag80
 
--- Hàm thiết lập lại đồ họa ban đầu của game
 local function CleanGraphicsEffects()
     Lighting.GlobalShadows = true
 end
 
--- Thuật toán kích hoạt Fix Lag theo cấp độ thực chiến
-local function TriggerFixLag(level)
+local function ApplyFixLag(level)
     CleanGraphicsEffects()
     if level == 0 then return end
     
@@ -342,31 +329,30 @@ local function TriggerFixLag(level)
     end
 end
 
--- Gắn sự kiện khóa chéo ON/OFF cho hệ thống nút Fix Lag
 Lag30 = CreateToggle(MoveSub, "Fix Lag 30% (Nhẹ)", "FixLag30", function(state)
     if state then
         Lag50.Update(false) Lag80.Update(false)
-        TriggerFixLag(30)
+        ApplyFixLag(30)
     else
-        if not HubSettings.FixLag50 and not HubSettings.FixLag80 then TriggerFixLag(0) end
+        if not HubSettings.FixLag50 and not HubSettings.FixLag80 then ApplyFixLag(0) end
     end
 end)
 
 Lag50 = CreateToggle(MoveSub, "Fix Lag 50% (Mạnh)", "FixLag50", function(state)
     if state then
         Lag30.Update(false) Lag80.Update(false)
-        TriggerFixLag(50)
+        ApplyFixLag(50)
     else
-        if not HubSettings.FixLag30 and not HubSettings.FixLag80 then TriggerFixLag(0) end
+        if not HubSettings.FixLag30 and not HubSettings.FixLag80 then ApplyFixLag(0) end
     end
 end)
 
 Lag80 = CreateToggle(MoveSub, "Fix Lag 80% (Xóa Hết)", "FixLag80", function(state)
     if state then
         Lag30.Update(false) Lag50.Update(false)
-        TriggerFixLag(80)
+        ApplyFixLag(80)
     else
-        if not HubSettings.FixLag30 and not HubSettings.FixLag50 then TriggerFixLag(0) end
+        if not HubSettings.FixLag30 and not HubSettings.FixLag50 then ApplyFixLag(0) end
     end
 end)
 
@@ -393,9 +379,7 @@ LoadBtn.Parent = ConfigSub
 
 SaveBtn.MouseButton1Click:Connect(function()
     local success, encoded = pcall(function() return HttpService:JSONEncode(HubSettings) end)
-    if success and writefile then
-        writefile(FileName, encoded)
-    end
+    if success and writefile then writefile(FileName, encoded) end
 end)
 
 LoadBtn.MouseButton1Click:Connect(function()
@@ -404,7 +388,6 @@ LoadBtn.MouseButton1Click:Connect(function()
         local success, decoded = pcall(function() return HttpService:JSONDecode(data) end)
         if success then
             for k, v in pairs(decoded) do HubSettings[k] = v end
-            -- Cập nhật trực quan trạng thái nút bấm
             AimToggle.Update(HubSettings.AimbotEnabled)
             TeamToggle.Update(HubSettings.TeamCheck)
             TriggerToggle.Update(HubSettings.TriggerBot)
@@ -416,7 +399,6 @@ LoadBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Phím tắt RightShift để Ẩn/Hiện toàn bộ Menu
 UserInputService.InputBegan:Connect(function(input, processed)
     if not processed and input.KeyCode == Enum.KeyCode.RightShift then
         MainFrame.Visible = not MainFrame.Visible
@@ -424,10 +406,8 @@ UserInputService.InputBegan:Connect(function(input, processed)
 end)
 
 -- =============================================================================
--- 5. ENGINE VÒNG LẶP LIÊN TỤC (CORE ENGINE LÕI CỦA V3 NÂNG CẤP LÊN V4)
+-- 5. ENGINE VÒNG LẶP LIÊN TỤC (ĐÃ SỬA LỖI MẤT BẮT DÍNH MỤC TIÊU CỦA AIMBOT)
 -- =============================================================================
-
--- [VÒNG LẶP KHÓA TÂM AIMBOT & TRIGGER BOT V4]
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Color = Color3.fromRGB(0, 255, 200)
 FOVCircle.Thickness = 1
@@ -439,12 +419,14 @@ local function GetClosestPlayer()
     local MousePos = UserInputService:GetMouseLocation()
 
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChild("Humanoid") then
-            -- TÍNH NĂNG MỚI V4: KIỂM TRA PHÂN PHE (TEAM CHECK)
-            if HubSettings.TeamCheck and player.Team == LocalPlayer.Team then continue end
+        if player ~= LocalPlayer and player.Character then
+            local Head = player.Character:FindFirstChild("Head")
+            local Humanoid = player.Character:FindFirstChild("Humanoid")
             
-            if player.Character.Humanoid.Health > 0 then
-                local ScreenPos, OnScreen = Camera:WorldToViewportPoint(player.Character.Head.Position)
+            if Head and Humanoid and Humanoid.Health > 0 then
+                if HubSettings.TeamCheck and player.Team == LocalPlayer.Team then continue end
+                
+                local ScreenPos, OnScreen = Camera:WorldToViewportPoint(Head.Position)
                 if OnScreen then
                     local Distance = (Vector2.new(ScreenPos.X, ScreenPos.Y) - MousePos).Magnitude
                     if Distance < MaxDistance then
@@ -458,49 +440,41 @@ local function GetClosestPlayer()
     return Target
 end
 
-UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then HoldingKey = true end
-end)
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then HoldingKey = false end
-end)
-
 RunService.RenderStepped:Connect(function()
-    -- Cập nhật vòng tròn FOV
-    FOVCircle.Radius = HubSettings.FOVRadius
-    FOVCircle.Position = UserInputService:GetMouseLocation()
-    FOVCircle.Visible = true
+    if FOVCircle then
+        FOVCircle.Radius = HubSettings.FOVRadius
+        FOVCircle.Position = UserInputService:GetMouseLocation()
+        FOVCircle.Visible = HubSettings.AimbotEnabled
+    end
 
-    -- Thực thi Aimbot điều hướng camera mượt mà
-    if HubSettings.AimbotEnabled and HoldingKey then
+    -- ĐÃ FIX: Nhận diện đè giữ Chuột Phải chính xác bằng hàm IsMouseButtonPressed toàn diện
+    if HubSettings.AimbotEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
         local targetPlayer = GetClosestPlayer()
         if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
             local targetPos = targetPlayer.Character.Head.Position
-            local camPos = Camera.CFrame.Position
-            local targetCFrame = CFrame.new(camPos, targetPos)
-            Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, HubSettings.Smoothness)
+            local camCFrame = Camera.CFrame
+            local targetCFrame = CFrame.new(camCFrame.Position, targetPos)
+            local smoothVal = math.clamp(HubSettings.Smoothness, 0.01, 1)
+            Camera.CFrame = camCFrame:Lerp(targetCFrame, smoothVal)
         end
     end
     
-    -- TÍNH NĂNG MỚI V4: TRIGGER BOT PHẢN XẠ SIÊU TỐC
     if HubSettings.TriggerBot and Mouse.Target then
         local targetChar = Mouse.Target.Parent
         local targetPlayer = Players:GetPlayerFromCharacter(targetChar)
         if targetPlayer and targetPlayer ~= LocalPlayer and targetChar:FindFirstChild("Humanoid") and targetChar.Humanoid.Health > 0 then
             if not (HubSettings.TeamCheck and targetPlayer.Team == LocalPlayer.Team) then
-                pcall(mouse1click) -- Ép chuột hệ thống nhấn kích hoạt xả đạn
+                pcall(mouse1click)
             end
         end
     end
     
-    -- Điều khiển vật lý nhân vật (Fly, Speed, Noclip từ v3)
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         if HubSettings.Noclip then
             for _, part in ipairs(LocalPlayer.Character:GetChildren()) do
                 if part:IsA("BasePart") then part.CanCollide = false end
             end
         end
-        -- Đồng bộ hóa tốc độ từ thanh kéo Slider
         LocalPlayer.Character.Humanoid.WalkSpeed = HubSettings.WalkSpeedValue
     end
 end)
@@ -524,21 +498,18 @@ local function ActiveESP(player)
             local pos, onScreen = Camera:WorldToViewportPoint(RootPart.Position)
 
             if onScreen then
-                -- THAY ĐỔI MÀU KHUNG THÔNG MINH THEO PHE PHÁI
                 if HubSettings.TeamCheck and player.Team == LocalPlayer.Team then
-                    Box.Color = Color3.fromRGB(0, 255, 100) -- Đồng đội: Xanh lá
+                    Box.Color = Color3.fromRGB(0, 255, 100)
                     Tracer.Color = Color3.fromRGB(0, 255, 100)
                 else
-                    Box.Color = Color3.fromRGB(255, 50, 50)  -- Kẻ địch: Đỏ
+                    Box.Color = Color3.fromRGB(255, 50, 50)
                     Tracer.Color = Color3.fromRGB(255, 50, 50)
                 end
 
-                -- Thiết lập kích thước khung Box ESP hình học
                 Box.Size = Vector2.new(2000 / pos.Z, 2500 / pos.Z)
                 Box.Position = Vector2.new(pos.X - Box.Size.X / 2, pos.Y - Box.Size.Y / 2)
                 Box.Visible = true
 
-                -- TÍNH NĂNG MỚI V4: VẼ TRACER LINE CHỐNG MÓC LỐP
                 if HubSettings.TracerEnabled then
                     Tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
                     Tracer.To = Vector2.new(pos.X, pos.Y)
@@ -557,6 +528,5 @@ local function ActiveESP(player)
     end)
 end
 
--- Kích hoạt cổng quét ESP tự động cho server
 for _, p in ipairs(Players:GetPlayers()) do if p ~= LocalPlayer then ActiveESP(p) end end
 Players.PlayerAdded:Connect(function(p) if p ~= LocalPlayer then ActiveESP(p) end end)
