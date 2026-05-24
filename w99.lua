@@ -5,12 +5,13 @@ local HubSettings = {
     Fly = false, FlySpeed = 100,
     SpeedHack = false, WalkSpeedValue = 100,
     Noclip = false, 
-    Invisibility = false
+    Invisibility = false,
+    SuperLagFix = false -- Quản lý trạng thái nút giảm lag
 }
 
--- BẢNG CẤU HÌNH AIMBOT & ESP CỦA BẠN (Giữ nguyên các giá trị)
+-- BẢNG CẤU HÌNH AIMBOT & ESP CỦA BẠN (Giữ nguyên các giá trị gốc)
 local AimbotSettings = {
-    AimbotEnabled = false, -- Đổi thành false để đồng bộ bật/tắt qua giao diện GUI khi mới chạy
+    AimbotEnabled = false, 
     AimKey = Enum.UserInputType.MouseButton2, -- Giữ Chuột Phải để Aim
     AimPart = "Head", -- Bộ phận khóa tâm ("Head" hoặc "HumanoidRootPart")
     Smoothness = 0.15, -- Độ mượt gốc của bạn
@@ -18,7 +19,7 @@ local AimbotSettings = {
     FOVEnabled = true,
     FOVRadius = 120, -- Bán kính vòng tròn tâm ngắm
     FOVColor = Color3.fromRGB(0, 255, 255), -- Màu xanh neon cho vòng FOV
-    EspEnabled = false -- Đổi thành false để đồng bộ với nút bấm GUI ban đầu
+    EspEnabled = false 
 }
 
 local Players = game:GetService("Players")
@@ -80,7 +81,7 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- Tạo cấu trúc ESP cho từng người chơi (Giữ nguyên gốc, chỉ thêm điều kiện nút bật/tắt)
+-- Tạo cấu trúc ESP cho từng người chơi (Giữ nguyên gốc)
 local function CreateESP(player)
     if player == LocalPlayer then return end
 
@@ -117,7 +118,7 @@ local function CreateESP(player)
             end
         end
 
-        -- Vẽ ESP (Thêm điều kiện check nút bấm bật/tắt từ Hub)
+        -- Vẽ ESP
         if AimbotSettings.EspEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
             local HumRoot = player.Character.HumanoidRootPart
             local ScreenPos, OnScreen = Camera:WorldToViewportPoint(HumRoot.Position)
@@ -155,7 +156,46 @@ end
 Players.PlayerAdded:Connect(CreateESP)
 
 -- ==========================================
--- 3. THIẾT KẾ GIAO DIỆN HỆ THỐNG (GUI WINDOW)
+-- 3. HỆ THỐNG FIX LAG CỰC ĐOAN (MỘT MÀU PHẲNG)
+-- ==========================================
+local function SmoothPart(part)
+    if part:IsA("BasePart") and not part:IsA("MeshPart") then
+        part.Material = Enum.Material.SmoothPlastic
+        part.Reflectance = 0
+    elseif part:IsA("Texture") or part:IsA("Decal") then
+        if part.Name ~= "face" then 
+            part:Destroy() 
+        end
+    elseif part:IsA("ParticleEmitter") or part:IsA("Trail") then
+        part.Enabled = false
+    end
+end
+
+local function ActivateLagFix()
+    local Lighting = game:GetService("Lighting")
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 9e9
+    
+    for _, effect in ipairs(Lighting:GetChildren()) do
+        if effect:IsA("PostEffect") or effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or effect:IsA("ColorCorrectionEffect") or effect:IsA("SunRaysEffect") then
+            effect.Enabled = false
+        end
+    end
+
+    for _, obj in ipairs(game:GetService("Workspace"):GetDescendants()) do
+        if not HubSettings.SuperLagFix then break end
+        SmoothPart(obj)
+    end
+end
+
+game:GetService("Workspace").DescendantAdded:Connect(function(obj)
+    if HubSettings.SuperLagFix then
+        SmoothPart(obj)
+    end
+end)
+
+-- ==========================================
+-- 4. THIẾT KẾ GIAO DIỆN HỆ THỐNG (GUI WINDOW)
 -- ==========================================
 if CoreGui:FindFirstChild("WynozINF_V3_Integrated") then
     CoreGui.WynozINF_V3_Integrated:Destroy()
@@ -171,8 +211,8 @@ MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 0)
 MainFrame.BorderSizePixel = 2
-MainFrame.Position = UDim2.new(0.5, -175, 0.25, -100)
-MainFrame.Size = UDim2.new(0, 350, 0, 360) 
+MainFrame.Position = UDim2.new(0.5, -175, 0.22, -100)
+MainFrame.Size = UDim2.new(0, 350, 0, 400) -- Mở rộng khung dọc lên 400 để chứa nút Giảm Lag thoải mái
 MainFrame.Active = true
 MainFrame.Draggable = true
 
@@ -227,19 +267,24 @@ local function CreateToggle(text, position, default, callback)
     end)
 end
 
--- Liên kết các nút bấm GUI vào cấu hình hệ thống
-CreateToggle("Fly (Bay tự do)", UDim2.new(0.06, 0, 0.14, 0), HubSettings.Fly, function(v) HubSettings.Fly = v end)
-CreateToggle("Speed (Chạy bộ)", UDim2.new(0.52, 0, 0.14, 0), HubSettings.SpeedHack, function(v) HubSettings.SpeedHack = v end)
-CreateToggle("Noclip (Xuyên tường)", UDim2.new(0.06, 0, 0.25, 0), HubSettings.Noclip, function(v) HubSettings.Noclip = v end)
-CreateToggle("Name ESP (Định vị)", UDim2.new(0.52, 0, 0.25, 0), AimbotSettings.EspEnabled, function(v) AimbotSettings.EspEnabled = v end)
-CreateToggle("Aimbot (Khóa tâm)", UDim2.new(0.06, 0, 0.36, 0), AimbotSettings.AimbotEnabled, function(v) AimbotSettings.AimbotEnabled = v end)
-CreateToggle("Invis (Tàng hình)", UDim2.new(0.52, 0, 0.36, 0), HubSettings.Invisibility, function(v) HubSettings.Invisibility = v end)
+-- TỌA ĐỘ CÁC NÚT BẤM (Đã căn chỉnh khoảng cách hoàn hảo không bị đè chữ)
+CreateToggle("Fly (Bay tự do)", UDim2.new(0.06, 0, 0.12, 0), HubSettings.Fly, function(v) HubSettings.Fly = v end)
+CreateToggle("Speed (Chạy bộ)", UDim2.new(0.52, 0, 0.12, 0), HubSettings.SpeedHack, function(v) HubSettings.SpeedHack = v end)
+CreateToggle("Noclip (Xuyên tường)", UDim2.new(0.06, 0, 0.22, 0), HubSettings.Noclip, function(v) HubSettings.Noclip = v end)
+CreateToggle("Name ESP (Định vị)", UDim2.new(0.52, 0, 0.22, 0), AimbotSettings.EspEnabled, function(v) AimbotSettings.EspEnabled = v end)
+CreateToggle("Aimbot (Khóa tâm)", UDim2.new(0.06, 0, 0.32, 0), AimbotSettings.AimbotEnabled, function(v) AimbotSettings.AimbotEnabled = v end)
+CreateToggle("Invis (Tàng hình)", UDim2.new(0.52, 0, 0.32, 0), HubSettings.Invisibility, function(v) HubSettings.Invisibility = v end)
+-- Nút bật tắt giảm lag 1 màu mới được thêm vào đồng bộ giao diện
+CreateToggle("Fix Lag (1 Màu)", UDim2.new(0.06, 0, 0.42, 0), HubSettings.SuperLagFix, function(v) 
+    HubSettings.SuperLagFix = v 
+    if v then ActivateLagFix() end 
+end)
 
 -- CHỨC NĂNG TELEPORT TỚI NGƯỜI CHƠI
 local TeleInput = Instance.new("TextBox")
 TeleInput.Parent = MainFrame
 TeleInput.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-TeleInput.Position = UDim2.new(0.06, 0, 0.49, 0)
+TeleInput.Position = UDim2.new(0.06, 0, 0.54, 0)
 TeleInput.Size = UDim2.new(0.88, 0, 0, 30)
 TeleInput.Font = Enum.Font.SourceSans
 TeleInput.Text = "Nhập tên người chơi muốn Teleport tới..."
@@ -269,7 +314,7 @@ end)
 local SpeedInput = Instance.new("TextBox")
 SpeedInput.Parent = MainFrame
 SpeedInput.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-SpeedInput.Position = UDim2.new(0.06, 0, 0.60, 0)
+SpeedInput.Position = UDim2.new(0.06, 0, 0.65, 0)
 SpeedInput.Size = UDim2.new(0.88, 0, 0, 30)
 SpeedInput.Font = Enum.Font.SourceSans
 SpeedInput.Text = "Nhập con số Tốc độ (Mặc định: 100)"
@@ -294,7 +339,7 @@ end)
 local FOVInput = Instance.new("TextBox")
 FOVInput.Parent = MainFrame
 FOVInput.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-FOVInput.Position = UDim2.new(0.06, 0, 0.71, 0)
+FOVInput.Position = UDim2.new(0.06, 0, 0.76, 0)
 FOVInput.Size = UDim2.new(0.88, 0, 0, 30)
 FOVInput.Font = Enum.Font.SourceSans
 FOVInput.Text = "Cài đặt kích thước vòng FOV: " .. tostring(AimbotSettings.FOVRadius)
@@ -318,7 +363,7 @@ end)
 local Tip = Instance.new("TextLabel")
 Tip.Parent = MainFrame
 Tip.BackgroundTransparency = 1
-Tip.Position = UDim2.new(0, 0, 0.88, 0)
+Tip.Position = UDim2.new(0, 0, 0.90, 0)
 Tip.Size = UDim2.new(1, 0, 0, 25)
 Tip.Font = Enum.Font.SourceSansItalic
 Tip.Text = "[RightShift] để Ẩn/Hiện Menu panel"
@@ -326,7 +371,7 @@ Tip.TextColor3 = Color3.fromRGB(150, 150, 150)
 Tip.TextSize = 12
 
 -- ==========================================
--- 4. VÒNG LẶP CORE ENGINE HỆ THỐNG (FLY, SPEED, NOCLIP, INVIS)
+-- 5. VÒNG LẶP CORE ENGINE HỆ THỐNG (FLY, SPEED, NOCLIP, INVIS)
 -- ==========================================
 local BodyVelocity, BodyGyro = nil, nil
 
@@ -341,55 +386,4 @@ RunService.RenderStepped:Connect(function()
             BodyVelocity = Instance.new("BodyVelocity", root) 
             BodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge) 
         end
-        if not BodyGyro or not BodyGyro.Parent then 
-            BodyGyro = Instance.new("BodyGyro", root) 
-            BodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge) 
-        end
-        BodyGyro.CFrame = Camera.CFrame
-        local dir = Vector3.new(0, 0, 0)
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + Camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - Camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - Camera.CFrame.LookVector:Cross(Vector3.new(0,1,0)) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + Camera.CFrame.LookVector:Cross(Vector3.new(0,1,0)) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then dir = dir - Vector3.new(0, 1, 0) end
-        BodyVelocity.Velocity = dir * HubSettings.FlySpeed
-    else
-        if BodyVelocity then BodyVelocity:Destroy() BodyVelocity = nil end
-        if BodyGyro then BodyGyro:Destroy() BodyGyro = nil end
-    end
-
-    -- Xử lý WalkSpeed
-    if hum then
-        hum.WalkSpeed = (HubSettings.SpeedHack and not HubSettings.Fly) and HubSettings.WalkSpeedValue or 16
-    end
-
-    -- Xử lý Noclip
-    if HubSettings.Noclip and char then
-        for _, part in ipairs(char:GetDescendants()) do 
-            if part:IsA("BasePart") then part.CanCollide = false end 
-        end
-    end
-
-    -- Xử lý Invisibility
-    if char and HubSettings.Invisibility then
-        for _, p in ipairs(char:GetDescendants()) do 
-            if p:IsA("BasePart") or p:IsA("Decal") then p.Transparency = 1 end 
-        end
-    else
-        if char and not HubSettings.Invisibility and char:FindFirstChild("Head") and char.Head.Transparency == 1 then
-            for _, p in ipairs(char:GetDescendants()) do
-                if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then p.Transparency = 0 end
-                if p:IsA("Decal") then p.Transparency = 0 end
-            end
-        end
-    end
-end)
-
--- Phím Ẩn/Hiện Panel GUI nhanh
-UserInputService.InputBegan:Connect(function(input, processed)
-    if processed then return end
-    if input.KeyCode == Enum.KeyCode.RightShift then 
-        MainFrame.Visible = not MainFrame.Visible 
-    end
-end)
+        if not Body
